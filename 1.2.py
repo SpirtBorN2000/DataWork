@@ -1,4 +1,4 @@
-
+# поменял пару цифр в токене, побаиваюсь выкладывать его на гит, результаты в любом случае есть в json файле
 import json
 from pprint import pprint
 import requests
