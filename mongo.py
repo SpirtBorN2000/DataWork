@@ -2,8 +2,11 @@ from bs4 import BeautifulSoup as bs
 import requests
 from pprint import pprint
 from pymongo import MongoClient
+from pymongo import UpdateOne
 
-
+salary = 150000 # в рублях
+salaryUSD = salary/74
+salaryEUR = salary/88
 
 bad_chars = ['\xa0']
 sub = 'д'
@@ -28,11 +31,10 @@ def spliternot(a):
 
 main_link = 'https://hh.ru/'
 goal = "python"
-headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36'}
+headers = {'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36'}
 vacancys = []
-i = True
 pagenumber = 0
-while i == True:
+while True:
     params = {'clusters': 'true', 'area': '1', 'L_is_autosearch': 'false', 'enable_snippets': 'true', 'text': goal,'page':pagenumber}
     response = requests.get(main_link + '/search/vacancy',params=params,headers=headers)
     if response.ok:
@@ -41,7 +43,7 @@ while i == True:
         try:
             target = soup.find('a',{'class':'bloko-button HH-Pager-Controls-Next HH-Pager-Control'}).getText()
         except Exception as e:
-            target = "последняя страница"
+            target = None
         if target == "дальше":
             for vacancy in vacancy_list:
                 vacancy_data = {}
@@ -93,11 +95,23 @@ while i == True:
                 vacancy_data['name'] = vacancy_name
                 vacancy_data['url'] = main_link
                 vacancys.append(vacancy_data)
-            i = False
+            break
+
 client = MongoClient('localhost', 27017)
-
 db = client['VacancyDB']
-
 hh = db.hh
+#hh.insert_many(vacancys)
 
-hh.insert_many(vacancys)
+upserts = [UpdateOne({'name': x['name']}, {'$setOnInsert': x}, upsert=True) for x in vacancys]
+hh.bulk_write(upserts)
+
+result = hh.find({'$or': [{'$and': [{'min payment': {'$gt': salary}},{'currency': 'руб.'}]},
+                          {'$and':[{'min payment': {'$gt': salaryUSD}},{'currency': 'USD'}]},
+                          {'$and':[{'min payment': {'$gt': salaryEUR}},{'currency': 'EUR'}]},
+                          {'$and':[{'max payment': {'$gt': salary}},{'currency': 'руб.'}]},
+                          {'$and':[{'max payment': {'$gt': salaryUSD}},{'currency': 'USD'}]},
+                          {'$and':[{'max payment': {'$gt': salaryEUR}},{'currency': 'EUR'}]}]})
+for user in result:
+   pprint(user)
+
+
