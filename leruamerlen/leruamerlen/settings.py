@@ -67,6 +67,8 @@ COOKIES_ENABLED = True
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     'leruamerlen.pipelines.LeruamerlenPipeline': 300,
+    'leruamerlen.pipelines.MNPhotosPipeline': 200,
+
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
